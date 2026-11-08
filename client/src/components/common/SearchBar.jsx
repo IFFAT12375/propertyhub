@@ -3,14 +3,12 @@ import { MapPin, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Button from './Button.jsx'
 import FormField from './FormField.jsx'
-import { mockProperties } from '../../data/mockProperties.js'
+import { lahoreAreas } from '../../data/locations.js'
 
 const initialSearch = {
   location: '',
   purpose: '',
 }
-const areas = [...new Set(mockProperties.map((property) => property.location.area))].sort()
-
 export default function SearchBar({
   onSearch,
   initialValues = initialSearch,
@@ -54,7 +52,7 @@ export default function SearchBar({
           onChange={handleChange}
           options={[
             { value: '', label: 'Choose an area in Lahore' },
-            ...areas.map((area) => ({ value: area, label: area })),
+            ...lahoreAreas.map((area) => ({ value: area, label: area })),
           ]}
         />
       </div>

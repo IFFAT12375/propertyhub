@@ -2,9 +2,18 @@ import { Link, Route, Routes } from 'react-router-dom'
 import Button from '../components/common/Button.jsx'
 import Home from '../pages/Home.jsx'
 import Login from '../pages/Login.jsx'
+import Favorites from '../pages/Favorites.jsx'
+import MyInquiries from '../pages/MyInquiries.jsx'
+import Profile from '../pages/Profile.jsx'
 import Properties from '../pages/Properties.jsx'
 import PropertyDetails from '../pages/PropertyDetails.jsx'
 import Register from '../pages/Register.jsx'
+import SellerApplication from '../pages/SellerApplication.jsx'
+import SellerDashboard from '../pages/SellerDashboard.jsx'
+import SellerInquiries from '../pages/SellerInquiries.jsx'
+import SellerProperties from '../pages/SellerProperties.jsx'
+import SellerPropertyForm from '../pages/SellerPropertyForm.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
 
 function NotFound() {
   return (
@@ -26,6 +35,74 @@ export default function AppRoutes() {
       <Route path="/properties/:propertyId" element={<PropertyDetails />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route
+        path="/profile"
+        element={<ProtectedRoute><Profile /></ProtectedRoute>}
+      />
+      <Route
+        path="/favorites"
+        element={<ProtectedRoute><Favorites /></ProtectedRoute>}
+      />
+      <Route
+        path="/inquiries"
+        element={<ProtectedRoute><MyInquiries /></ProtectedRoute>}
+      />
+      <Route
+        path="/seller/apply"
+        element={
+          <ProtectedRoute allowedRoles={['user', 'seller']}>
+            <SellerApplication />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller/application"
+        element={
+          <ProtectedRoute allowedRoles={['user', 'seller']}>
+            <SellerApplication />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller/properties"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerProperties />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller/properties/new"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerPropertyForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller/properties/:propertyId/edit"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerPropertyForm mode="edit" />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller/inquiries"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerInquiries />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

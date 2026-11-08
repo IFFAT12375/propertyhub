@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import Button from '../common/Button.jsx'
+import { useAuth } from '../../context/useAuth.js'
 
 const primaryLinks = [
   { to: '/properties?purpose=sale', label: 'Buy' },
@@ -11,6 +12,7 @@ const primaryLinks = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { user, logout } = useAuth()
 
   function closeMenu() {
     setMenuOpen(false)
@@ -50,12 +52,37 @@ export default function Navbar() {
             ))}
           </div>
           <div className="navbar__actions">
-            <Button as="link" to="/login" variant="text" onClick={closeMenu}>
-              Log in
-            </Button>
-            <Button as="link" to="/register" size="small" onClick={closeMenu}>
-              Get started
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  as="link"
+                  to={user.role === 'admin' ? '/admin' : user.role === 'seller' ? '/seller' : '/profile'}
+                  variant="text"
+                  onClick={closeMenu}
+                >
+                  {user.name.split(' ')[0]}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={() => {
+                    logout()
+                    closeMenu()
+                  }}
+                >
+                  Log out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button as="link" to="/login" variant="text" onClick={closeMenu}>
+                  Log in
+                </Button>
+                <Button as="link" to="/register" size="small" onClick={closeMenu}>
+                  Get started
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" fill="none">
+  <rect width="1200" height="800" fill="#E9E8DF"/>
+  <circle cx="930" cy="170" r="95" fill="#D8AD65" fill-opacity=".4"/>
+  <path d="M0 595c143-50 262-28 408 8 166 41 319 20 470-24 113-33 213-31 322 3v218H0V595Z" fill="#D9DFD5"/>
+  <path d="M254 381 596 165l345 216v251H254V381Z" fill="#F8F7F1"/>
+  <path d="m218 387 378-246 382 246-31 48-351-226-351 226-27-48Z" fill="#174A3A"/>
+  <path d="M497 473h205v159H497V473Z" fill="#D8AD65" fill-opacity=".8"/>
+  <path d="M520 496h69v58h-69v-58Zm90 0h69v58h-69v-58Z" fill="#F5F4EF"/>
+  <path d="M566 555h68v77h-68v-77Z" fill="#174A3A"/>
+  <path d="M313 413h138v128H313V413Zm481 0h138v128H794V413Z" fill="#C5D8D0"/>
+  <path d="M330 430h103v94H330v-94Zm481 0h103v94H811v-94Z" fill="#F5F4EF"/>
+  <path d="M381 430v94m481-94v94M330 477h103m378 0h103" stroke="#174A3A" stroke-opacity=".55" stroke-width="8"/>
+  <path d="M156 631h90V499c0-25-20-45-45-45s-45 20-45 45v132Zm807 0h90V499c0-25-20-45-45-45s-45 20-45 45v132Z" fill="#78917D"/>
+  <path d="M114 631h174m629 0h174" stroke="#174A3A" stroke-linecap="round" stroke-width="12"/>
+  <path d="M0 643c172-22 311-20 458 4 182 30 339 27 505-5 86-17 163-20 237-11v169H0V643Z" fill="#B7C7B5"/>
+</svg>

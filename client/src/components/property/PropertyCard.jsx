@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowUpRight, Bath, BedDouble, Heart, MapPin, Ruler } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import fallbackImage from '../../assets/hero.png'
+import fallbackImage from '../../assets/property-placeholder.svg'
 import Badge from '../common/Badge.jsx'
 import { formatPrice } from '../../utils/properties.js'
 

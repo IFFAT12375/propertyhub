@@ -1,20 +1,21 @@
 import { ArrowRight, BadgeCheck, MapPin, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import fallbackImage from '../assets/hero.png'
+import fallbackImage from '../assets/property-placeholder.svg'
 import Button from '../components/common/Button.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
 import SearchBar from '../components/common/SearchBar.jsx'
 import PropertyGrid from '../components/property/PropertyGrid.jsx'
-import { mockProperties } from '../data/mockProperties.js'
 import { useAuth } from '../context/useAuth.js'
+import { useMarketplace } from '../context/useMarketplace.js'
 import { getPublicProperties } from '../utils/properties.js'
 
 const areas = ['Gulberg', 'DHA Phase 6', 'Johar Town', 'Lahore Cantt', 'Bahria Town']
 
 export default function Home() {
   const { user, favoriteIds, toggleFavorite } = useAuth()
+  const { properties } = useMarketplace()
   const navigate = useNavigate()
-  const featuredProperties = getPublicProperties(mockProperties).slice(0, 3)
+  const featuredProperties = getPublicProperties(properties).slice(0, 3)
 
   function handleFavoriteToggle(propertyId) {
     if (!user) {

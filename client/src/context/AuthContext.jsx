@@ -60,6 +60,25 @@ export default function AuthProvider({ children }) {
 
   const logout = useCallback(() => setUser(null), [])
 
+  const updateProfile = useCallback(
+    (updates) => {
+      if (!user) return false
+      const nextUser = {
+        ...user,
+        name: updates.name.trim(),
+        phone: updates.phone.trim(),
+      }
+      setUser(nextUser)
+      setAccounts((current) =>
+        current.map((account) =>
+          account.id === user.id ? { ...account, ...updates } : account,
+        ),
+      )
+      return true
+    },
+    [user],
+  )
+
   const toggleFavorite = useCallback(
     (propertyId) => {
       if (!user) return false
@@ -77,8 +96,8 @@ export default function AuthProvider({ children }) {
   )
 
   const value = useMemo(
-    () => ({ user, favoriteIds, login, register, logout, toggleFavorite }),
-    [user, favoriteIds, login, register, logout, toggleFavorite],
+    () => ({ user, favoriteIds, login, register, logout, updateProfile, toggleFavorite }),
+    [user, favoriteIds, login, register, logout, updateProfile, toggleFavorite],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

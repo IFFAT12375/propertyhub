@@ -10,19 +10,20 @@ import {
   Ruler,
 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import fallbackImage from '../assets/hero.png'
+import fallbackImage from '../assets/property-placeholder.svg'
 import Badge from '../components/common/Badge.jsx'
 import Button from '../components/common/Button.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
-import { mockProperties } from '../data/mockProperties.js'
 import { useAuth } from '../context/useAuth.js'
+import { useMarketplace } from '../context/useMarketplace.js'
 import { formatPrice, getPublicProperties } from '../utils/properties.js'
 
 export default function PropertyDetails() {
   const { propertyId } = useParams()
-  const property = getPublicProperties(mockProperties).find(
+  const { properties } = useMarketplace()
+  const property = getPublicProperties(properties).find(
     (item) => item.id === propertyId,
   )
 
@@ -43,6 +44,7 @@ export default function PropertyDetails() {
 
 function PropertyDetailsContent({ property }) {
   const { user, favoriteIds, toggleFavorite } = useAuth()
+  const { createInquiry } = useMarketplace()
   const navigate = useNavigate()
   const [imageSource, setImageSource] = useState(property.image || fallbackImage)
   const [inquiry, setInquiry] = useState({
@@ -63,11 +65,23 @@ function PropertyDetailsContent({ property }) {
 
   function submitInquiry(event) {
     event.preventDefault()
+    const result = createInquiry({
+      propertyId: property.id,
+      seekerId: user?.id || null,
+      name: inquiry.name,
+      email: inquiry.email,
+      phone: user?.phone || '',
+      message: inquiry.message,
+    })
+    if (!result.success) {
+      setSubmission({ status: 'error', message: result.message })
+      return
+    }
     setSubmission({
-      status: user ? 'verified' : 'pending',
+      status: result.inquiry.verificationStatus,
       message: user
-        ? 'Your demo inquiry is ready for the seller. It has not been sent to a real seller.'
-        : 'Demo inquiry recorded as awaiting email verification. No email was sent, and sellers would not see it as verified.',
+        ? 'Your demo inquiry is now visible in My inquiries. It has not been sent to a real seller.'
+        : 'Demo inquiry saved as awaiting email verification. No email was sent, and sellers cannot see it as verified.',
     })
     setInquiry((current) => ({ ...current, message: '' }))
   }

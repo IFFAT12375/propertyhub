@@ -6,13 +6,13 @@ import EmptyState from '../components/common/EmptyState.jsx'
 import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
 import PropertyGrid from '../components/property/PropertyGrid.jsx'
-import { mockProperties } from '../data/mockProperties.js'
+import { lahoreAreas } from '../data/locations.js'
 import { useAuth } from '../context/useAuth.js'
+import { useMarketplace } from '../context/useMarketplace.js'
 import { getPublicProperties } from '../utils/properties.js'
 
 const pageSize = 6
-const areas = [...new Set(mockProperties.map((property) => property.location.area))].sort()
-const propertyTypes = [...new Set(mockProperties.map((property) => property.type))].sort()
+const propertyTypes = ['apartment', 'house', 'office', 'plot', 'shop', 'warehouse']
 
 function readFilters(params) {
   return {
@@ -29,10 +29,11 @@ export default function Properties() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = readFilters(searchParams)
   const { user, favoriteIds, toggleFavorite } = useAuth()
+  const { properties } = useMarketplace()
   const navigate = useNavigate()
   const currentPage = Math.max(1, Number(searchParams.get('page')) || 1)
 
-  const results = getPublicProperties(mockProperties).filter((property) => {
+  const results = getPublicProperties(properties).filter((property) => {
     const locationMatches =
       !filters.location ||
       property.location.area.toLowerCase() === filters.location.toLowerCase()
@@ -189,7 +190,7 @@ function FilterForm({ initialValues, onApply }) {
         onChange={updateFilter}
         options={[
           { value: '', label: 'All Lahore areas' },
-          ...areas.map((area) => ({ value: area, label: area })),
+          ...lahoreAreas.map((area) => ({ value: area, label: area })),
         ]}
       />
       <FormField

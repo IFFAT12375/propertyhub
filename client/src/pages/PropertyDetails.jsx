@@ -119,6 +119,11 @@ function PropertyDetailsContent({ property }) {
             variant="light"
             size="small"
             onClick={handleFavorite}
+            aria-label={
+              isFavorite
+                ? `Remove ${property.title} from favorites`
+                : `Add ${property.title} to favorites`
+            }
             aria-pressed={isFavorite}
           >
             <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />

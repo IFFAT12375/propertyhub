@@ -12,6 +12,7 @@ export default function AuthProvider({ children }) {
   const [accounts, setAccounts] = useState(demoUsers)
   const [user, setUser] = useState(null)
   const [favoritesByUser, setFavoritesByUser] = useState({})
+  const users = useMemo(() => accounts.map(publicUser), [accounts])
   const favoriteIds = useMemo(
     () => (user ? favoritesByUser[user.id] || [] : []),
     [user, favoritesByUser],
@@ -25,6 +26,9 @@ export default function AuthProvider({ children }) {
 
       if (!account || account.password !== password) {
         return { success: false, message: 'The email or password is incorrect.' }
+      }
+      if (account.status === 'suspended') {
+        return { success: false, message: 'This demo account is currently suspended.' }
       }
 
       const authenticatedUser = publicUser(account)
@@ -49,6 +53,7 @@ export default function AuthProvider({ children }) {
         phone: phone.trim(),
         role: 'user',
         sellerApplicationStatus: 'not-applied',
+        status: 'active',
       }
       setAccounts((current) => [...current, account])
       const registeredUser = publicUser(account)
@@ -79,6 +84,21 @@ export default function AuthProvider({ children }) {
     [user],
   )
 
+  const updateUserAccount = useCallback(
+    (userId, updates) => {
+      const account = accounts.find((item) => item.id === userId)
+      if (!account) return false
+
+      const nextAccount = { ...account, ...updates }
+      setAccounts((current) =>
+        current.map((item) => (item.id === userId ? nextAccount : item)),
+      )
+      if (user?.id === userId) setUser(publicUser(nextAccount))
+      return true
+    },
+    [accounts, user],
+  )
+
   const toggleFavorite = useCallback(
     (propertyId) => {
       if (!user) return false
@@ -96,8 +116,28 @@ export default function AuthProvider({ children }) {
   )
 
   const value = useMemo(
-    () => ({ user, favoriteIds, login, register, logout, updateProfile, toggleFavorite }),
-    [user, favoriteIds, login, register, logout, updateProfile, toggleFavorite],
+    () => ({
+      user,
+      users,
+      favoriteIds,
+      login,
+      register,
+      logout,
+      updateProfile,
+      updateUserAccount,
+      toggleFavorite,
+    }),
+    [
+      user,
+      users,
+      favoriteIds,
+      login,
+      register,
+      logout,
+      updateProfile,
+      updateUserAccount,
+      toggleFavorite,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

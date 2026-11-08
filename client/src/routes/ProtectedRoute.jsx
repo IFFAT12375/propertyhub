@@ -11,7 +11,10 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (
+    (allowedRoles && !allowedRoles.includes(user.role)) ||
+    (allowedRoles?.includes('seller') && user.sellerStatus === 'suspended')
+  ) {
     return (
       <div className="access-denied page-container" role="status">
         <span className="eyebrow">Prototype access</span>

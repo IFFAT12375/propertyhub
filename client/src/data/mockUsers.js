@@ -6,7 +6,8 @@ export const demoUsers = [
     password: 'demo123',
     phone: '+92 300 555 0101',
     role: 'user',
-    sellerApplicationStatus: 'not-applied',
+    sellerApplicationStatus: 'pending',
+    status: 'active',
   },
   {
     id: 'seller-demo',
@@ -17,6 +18,7 @@ export const demoUsers = [
     role: 'seller',
     sellerApplicationStatus: 'approved',
     sellerStatus: 'active',
+    status: 'active',
   },
   {
     id: 'admin-demo',
@@ -25,5 +27,6 @@ export const demoUsers = [
     password: 'demo123',
     phone: '+92 300 555 0100',
     role: 'admin',
+    status: 'active',
   },
 ]

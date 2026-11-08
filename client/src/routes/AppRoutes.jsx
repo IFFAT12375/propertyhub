@@ -14,6 +14,10 @@ import SellerInquiries from '../pages/SellerInquiries.jsx'
 import SellerProperties from '../pages/SellerProperties.jsx'
 import SellerPropertyForm from '../pages/SellerPropertyForm.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
+import AdminDashboard from '../pages/AdminDashboard.jsx'
+import AdminSellerApplications from '../pages/AdminSellerApplications.jsx'
+import AdminProperties from '../pages/AdminProperties.jsx'
+import AdminUsers from '../pages/AdminUsers.jsx'
 
 function NotFound() {
   return (
@@ -100,6 +104,38 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['seller']}>
             <SellerInquiries />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/seller-applications"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminSellerApplications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/properties"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminProperties />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminUsers />
           </ProtectedRoute>
         }
       />

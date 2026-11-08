@@ -113,6 +113,79 @@ export default function MarketplaceProvider({ children }) {
     [applications],
   )
 
+  const reviewApplication = useCallback(
+    (applicationId, decision, rejectionReason = '') => {
+      const application = applications.find((item) => item.id === applicationId)
+      if (!application || application.status !== 'pending') {
+        return { success: false, message: 'This application is no longer pending review.' }
+      }
+      if (!['approved', 'rejected'].includes(decision)) {
+        return { success: false, message: 'Choose approve or reject for this application.' }
+      }
+      if (decision === 'rejected' && !rejectionReason.trim()) {
+        return { success: false, message: 'Add a reason before rejecting an application.' }
+      }
+
+      setApplications((current) =>
+        current.map((item) =>
+          item.id === applicationId
+            ? {
+                ...item,
+                status: decision,
+                rejectionReason: decision === 'rejected' ? rejectionReason.trim() : '',
+              }
+            : item,
+        ),
+      )
+      return { success: true, application: { ...application, status: decision } }
+    },
+    [applications],
+  )
+
+  const moderateProperty = useCallback(
+    (propertyId, decision, rejectionReason = '') => {
+      const property = properties.find((item) => item.id === propertyId)
+      if (!property || property.moderationStatus !== 'pending') {
+        return { success: false, message: 'This property is no longer pending review.' }
+      }
+      if (!['approved', 'rejected'].includes(decision)) {
+        return { success: false, message: 'Choose approve or reject for this listing.' }
+      }
+      if (decision === 'rejected' && !rejectionReason.trim()) {
+        return { success: false, message: 'Add a reason before rejecting a listing.' }
+      }
+
+      setProperties((current) =>
+        current.map((item) =>
+          item.id === propertyId
+            ? {
+                ...item,
+                moderationStatus: decision,
+                rejectionReason: decision === 'rejected' ? rejectionReason.trim() : '',
+              }
+            : item,
+        ),
+      )
+      return { success: true, property: { ...property, moderationStatus: decision } }
+    },
+    [properties],
+  )
+
+  const updateSellerStatus = useCallback(
+    (sellerId, status) => {
+      if (!['active', 'suspended'].includes(status)) return false
+      setProperties((current) =>
+        current.map((property) =>
+          property.ownerId === sellerId
+            ? { ...property, sellerStatus: status }
+            : property,
+        ),
+      )
+      return true
+    },
+    [],
+  )
+
   const createInquiry = useCallback(
     (details) => {
       const property = properties.find((item) => item.id === details.propertyId)
@@ -189,6 +262,9 @@ export default function MarketplaceProvider({ children }) {
       updateAvailability,
       softDeleteProperty,
       submitApplication,
+      reviewApplication,
+      moderateProperty,
+      updateSellerStatus,
       createInquiry,
       updateInquiryFollowUp,
       updateSellerContact,
@@ -202,6 +278,9 @@ export default function MarketplaceProvider({ children }) {
       updateAvailability,
       softDeleteProperty,
       submitApplication,
+      reviewApplication,
+      moderateProperty,
+      updateSellerStatus,
       createInquiry,
       updateInquiryFollowUp,
       updateSellerContact,

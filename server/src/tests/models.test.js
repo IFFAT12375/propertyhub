@@ -20,6 +20,8 @@ const validProperty = () => ({
   priceFrequency: null,
   area: 10,
   areaUnit: 'marla',
+  bedrooms: 3,
+  bathrooms: 2,
   location: { area: 'Gulberg', city: 'Lahore' },
   images: [{
     filename: 'property-image.webp',
@@ -125,6 +127,19 @@ describe('Mongoose domain models', () => {
     )
 
     assert.equal(error?.errors.images?.kind, 'user defined')
+  })
+
+  it('requires bedrooms and bathrooms and keeps the title optional', async () => {
+    const { bedrooms, bathrooms, title, ...propertyFields } = validProperty()
+    const property = new Property(propertyFields)
+    const error = await property.validate().then(
+      () => null,
+      (validationError) => validationError,
+    )
+
+    assert.equal(error?.errors.bedrooms?.kind, 'required')
+    assert.equal(error?.errors.bathrooms?.kind, 'required')
+    assert.equal(property.title, undefined)
   })
 
   it('prevents duplicate favorites with a unique user/property index', () => {

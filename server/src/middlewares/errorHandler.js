@@ -12,6 +12,18 @@ export default function errorHandler(error, req, res, next) {
     normalizedError = new AppError(400, 'INVALID_JSON', 'Request body contains invalid JSON.')
   } else if (error.type === 'entity.too.large') {
     normalizedError = new AppError(413, 'REQUEST_TOO_LARGE', 'Request body exceeds the allowed size.')
+  } else if (error.name === 'ValidationError') {
+    normalizedError = new AppError(
+      400,
+      'VALIDATION_ERROR',
+      'One or more stored fields are invalid.',
+      Object.entries(error.errors ?? {}).map(([field, issue]) => ({
+        field,
+        message: issue.message,
+      })),
+    )
+  } else if (error.code === 11000) {
+    normalizedError = new AppError(409, 'DUPLICATE_RESOURCE', 'A record with these values already exists.')
   } else if (!(error instanceof AppError) && Number.isInteger(error.status)) {
     normalizedError = new AppError(
       error.status,

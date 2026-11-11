@@ -1,7 +1,8 @@
 import AppError from '../utils/AppError.js'
+import { cleanupUploads } from '../utils/imageStorage.js'
 
 export default function validate(schemas) {
-  return (req, _res, next) => {
+  return async (req, _res, next) => {
     const validated = {}
     const issues = []
 
@@ -22,6 +23,7 @@ export default function validate(schemas) {
     }
 
     if (issues.length) {
+      await cleanupUploads(req.files)
       next(
         new AppError(
           400,

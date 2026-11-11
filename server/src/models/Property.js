@@ -27,7 +27,7 @@ const propertySchema = new mongoose.Schema(
       required: true,
       immutable: true,
     },
-    title: { type: String, required: true, trim: true, maxlength: 180 },
+    title: { type: String, trim: true, maxlength: 180 },
     description: {
       type: String,
       required: true,
@@ -61,11 +61,14 @@ const propertySchema = new mongoose.Schema(
       enum: ['marla', 'kanal', 'sq ft'],
       required: true,
     },
-    bedrooms: { type: Number, min: 0, default: null },
-    bathrooms: { type: Number, min: 0, default: null },
+    bedrooms: { type: Number, required: true, min: 0 },
+    bathrooms: { type: Number, required: true, min: 0 },
     location: {
       area: { type: String, enum: lahoreAreas, required: true },
       city: { type: String, enum: ['Lahore'], default: 'Lahore', required: true },
+      block: { type: String, trim: true, maxlength: 100 },
+      street: { type: String, trim: true, maxlength: 160 },
+      address: { type: String, trim: true, maxlength: 500 },
     },
     images: {
       type: [propertyImageSchema],

@@ -11,6 +11,7 @@ import notFound from './middlewares/notFound.js'
 import requestId from './middlewares/requestId.js'
 import requestLogger from './middlewares/requestLogger.js'
 import apiRoutes from './routes/index.js'
+import { uploadDirectory } from './utils/imageStorage.js'
 
 const app = express()
 
@@ -78,6 +79,11 @@ app.use('/api/v1', apiRateLimit)
 app.use(cookieParser())
 app.use(express.json({ limit: env.JSON_BODY_LIMIT }))
 app.use('/api/v1', apiRoutes)
+app.use('/uploads', express.static(uploadDirectory, {
+  dotfiles: 'deny',
+  index: false,
+  maxAge: '1d',
+}))
 
 app.use(notFound)
 app.use(errorHandler)

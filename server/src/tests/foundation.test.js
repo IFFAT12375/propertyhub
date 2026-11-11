@@ -85,6 +85,26 @@ describe('backend foundation', () => {
     assert.match(result.stderr, /SMTP_HOST, SMTP_USER, and SMTP_PASSWORD are required/)
   })
 
+  it('requires SMTP delivery in production even when credentials are valid', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['--input-type=module', '-e', "import('./src/config/env.js')"],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'production-signing-secret-that-is-long-enough',
+          EMAIL_PROVIDER: 'console',
+        },
+      },
+    )
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /SMTP email delivery must be configured in production/)
+  })
+
   it('serves a versioned liveness check with a request ID', async () => {
     const response = await request(app).get('/api/v1/health')
 

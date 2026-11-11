@@ -45,6 +45,46 @@ describe('backend foundation', () => {
     assert.match(result.stderr, /Invalid server environment configuration: MONGO_URI/)
   })
 
+  it('rejects the development JWT signing secret in production', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['--input-type=module', '-e', "import('./src/config/env.js')"],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'development-only-secret-change-before-deploying',
+        },
+      },
+    )
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /JWT_ACCESS_SECRET: A private production signing secret must be configured/)
+  })
+
+  it('requires SMTP credentials when SMTP email delivery is selected', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['--input-type=module', '-e', "import('./src/config/env.js')"],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          EMAIL_PROVIDER: 'smtp',
+          SMTP_HOST: '',
+          SMTP_USER: '',
+          SMTP_PASSWORD: '',
+        },
+      },
+    )
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /SMTP_HOST, SMTP_USER, and SMTP_PASSWORD are required/)
+  })
+
   it('serves a versioned liveness check with a request ID', async () => {
     const response = await request(app).get('/api/v1/health')
 

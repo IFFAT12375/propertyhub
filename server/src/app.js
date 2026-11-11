@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import { rateLimit } from 'express-rate-limit'
 import helmet from 'helmet'
 import mongoose from 'mongoose'
@@ -9,6 +10,7 @@ import errorHandler from './middlewares/errorHandler.js'
 import notFound from './middlewares/notFound.js'
 import requestId from './middlewares/requestId.js'
 import requestLogger from './middlewares/requestLogger.js'
+import apiRoutes from './routes/index.js'
 
 const app = express()
 
@@ -28,6 +30,7 @@ app.use(
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
+    credentials: true,
     optionsSuccessStatus: 204,
   }),
 )
@@ -72,7 +75,9 @@ app.get('/api/health', healthCheck)
 app.get('/api/v1/health', healthCheck)
 app.get('/api/v1/health/ready', readinessCheck)
 app.use('/api/v1', apiRateLimit)
+app.use(cookieParser())
 app.use(express.json({ limit: env.JSON_BODY_LIMIT }))
+app.use('/api/v1', apiRoutes)
 
 app.use(notFound)
 app.use(errorHandler)

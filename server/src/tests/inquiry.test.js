@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import mongoose from 'mongoose'
+import Inquiry from '../models/Inquiry.js'
+import { listMyInquiries } from '../services/inquiry.service.js'
 import {
   createInquiryBodySchema,
+  listMyInquiriesQuerySchema,
   updateInquiryFollowUpBodySchema,
   verifyInquiryQuerySchema,
 } from '../validators/inquiry.validators.js'
@@ -29,6 +33,48 @@ describe('inquiry request validation', () => {
     assert.equal(verifyInquiryQuerySchema.safeParse({ token: 'short' }).success, false)
   })
 
+  it('validates pagination for a user-owned inquiry list', () => {
+    assert.deepEqual(listMyInquiriesQuerySchema.parse({ page: '2', limit: '10' }), {
+      page: 2,
+      limit: 10,
+    })
+    assert.equal(listMyInquiriesQuerySchema.safeParse({ propertyId: 'other-user-property' }).success, false)
+  })
+
+  it('queries only the authenticated user’s inquiries and paginates results', async (t) => {
+    const userId = new mongoose.Types.ObjectId()
+    let capturedFilter
+    let capturedSkip
+    let capturedLimit
+    const results = [{ _id: new mongoose.Types.ObjectId() }]
+    const query = {
+      populate() { return this },
+      sort() { return this },
+      skip(value) { capturedSkip = value; return this },
+      limit(value) { capturedLimit = value; return Promise.resolve(results) },
+    }
+    t.mock.method(Inquiry, 'find', (filter) => {
+      capturedFilter = filter
+      return query
+    })
+    t.mock.method(Inquiry, 'countDocuments', async (filter) => {
+      assert.deepEqual(filter, { seeker: userId })
+      return 21
+    })
+
+    const result = await listMyInquiries(userId, { page: 2, limit: 10 })
+    assert.deepEqual(capturedFilter, { seeker: userId })
+    assert.equal(capturedSkip, 10)
+    assert.equal(capturedLimit, 10)
+    assert.equal(result.inquiries, results)
+    assert.deepEqual(result.pagination, {
+      page: 2,
+      limit: 10,
+      totalItems: 21,
+      totalPages: 3,
+    })
+  })
+
   it('allows sellers to mark verified inquiries contacted or closed, not reset them', () => {
     assert.equal(updateInquiryFollowUpBodySchema.safeParse({ followUpStatus: 'contacted' }).success, true)
     assert.equal(updateInquiryFollowUpBodySchema.safeParse({ followUpStatus: 'closed' }).success, true)
@@ -49,7 +95,7 @@ describe('inquiry request validation', () => {
     try {
       const emailSent = await sendInquiryVerification({
         email: 'guest@example.test',
-        verificationUrl: 'http://localhost:5000/api/v1/inquiries/verify?token=sample',
+        verificationUrl: 'http://localhost:5173/inquiries/verify?token=sample',
       })
 
       assert.equal(emailSent, false)

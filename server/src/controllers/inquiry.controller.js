@@ -49,6 +49,14 @@ export async function listSellerInquiries(req, res) {
   res.status(200).json({ success: true, data: result })
 }
 
+export async function listMyInquiries(req, res) {
+  const result = await inquiryService.listMyInquiries(
+    req.user._id,
+    req.validated.query,
+  )
+  res.status(200).json({ success: true, data: result })
+}
+
 export async function updateFollowUpStatus(req, res) {
   const inquiry = await inquiryService.updateFollowUpStatus(
     req.validated.params.id,

@@ -42,6 +42,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_TTL: z.string().regex(/^\d+[smhd]$/).default('15m'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
   PUBLIC_API_URL: z.string().url().default('http://localhost:5000'),
+  PUBLIC_WEB_URL: z.string().url().default('http://localhost:5173'),
   INQUIRY_VERIFICATION_TTL_MINUTES: z.coerce.number().int().positive().default(45),
   EMAIL_PROVIDER: z.enum(['console', 'smtp']).default('console'),
   EMAIL_FROM: z.string().min(1).default('PropertyHub <no-reply@propertyhub.local>'),

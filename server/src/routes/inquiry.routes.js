@@ -11,6 +11,7 @@ import {
   createInquiryBodySchema,
   inquiryIdParamsSchema,
   listInquiriesQuerySchema,
+  listMyInquiriesQuerySchema,
   updateInquiryFollowUpBodySchema,
   verifyInquiryQuerySchema,
 } from '../validators/inquiry.validators.js'
@@ -41,6 +42,12 @@ router.post(
   optionalAuthenticate,
   validate({ body: createInquiryBodySchema }),
   inquiryController.createInquiry,
+)
+router.get(
+  '/mine',
+  authenticate,
+  validate({ query: listMyInquiriesQuerySchema }),
+  inquiryController.listMyInquiries,
 )
 router.get(
   '/',

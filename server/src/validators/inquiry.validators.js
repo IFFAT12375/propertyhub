@@ -20,6 +20,7 @@ export const listInquiriesQuerySchema = paginationQuerySchema.extend({
   followUpStatus: z.enum(['new', 'contacted', 'closed']).optional(),
 }).strict()
 
+export const listMyInquiriesQuerySchema = paginationQuerySchema.strict()
 export const inquiryIdParamsSchema = idParamsSchema
 export const updateInquiryFollowUpBodySchema = z.object({
   followUpStatus: z.enum(['contacted', 'closed']),

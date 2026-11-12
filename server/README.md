@@ -20,7 +20,8 @@ Review `.env` before starting the server. In particular:
 - Set `MONGO_URI` to the local MongoDB database URL. The example uses `mongodb://127.0.0.1:27017/propertyhub`.
 - Replace `JWT_ACCESS_SECRET` with a private random value of at least 32 characters. Production rejects the example placeholder.
 - Set `CORS_ORIGINS` to a comma-separated list of trusted frontend origins.
-- `PUBLIC_API_URL` must be the externally reachable API origin used to construct guest inquiry verification links.
+- `PUBLIC_API_URL` must be the externally reachable API origin used for property image URLs.
+- `PUBLIC_WEB_URL` must be the frontend origin used by guest inquiry verification links.
 
 Run the API:
 
@@ -48,7 +49,8 @@ See [`.env.example`](./.env.example) for the complete template.
 | `REFRESH_TOKEN_TTL_DAYS` | Refresh-session lifetime (30 days by default). |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`, `INQUIRY_RATE_LIMIT_MAX` | Global, authentication, and inquiry rate limits. |
 | `JSON_BODY_LIMIT` | Maximum JSON request size. |
-| `PUBLIC_API_URL`, `INQUIRY_VERIFICATION_TTL_MINUTES` | Guest verification-link origin and expiry (45 minutes by default). |
+| `PUBLIC_API_URL` | Public API origin used when building property image URLs. |
+| `PUBLIC_WEB_URL`, `INQUIRY_VERIFICATION_TTL_MINUTES` | Frontend verification-link origin and expiry (45 minutes by default). |
 | `EMAIL_PROVIDER` | `console` logs verification links for development; `smtp` sends email. |
 | `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD` | SMTP sender and connection configuration. |
 | `UPLOAD_DIR` | Local directory for property images. |
@@ -103,6 +105,7 @@ All endpoints below are prefixed with `/api/v1`. Unless marked public, endpoints
 | Favorites | `DELETE /favorites/:propertyId` | User, seller, admin | Remove a favorite. |
 | Inquiries | `POST /inquiries` | Public or authenticated | Contact the owner of a currently public property. |
 | Inquiries | `GET /inquiries/verify?token=...` | Public | Verify a guest inquiry's email; links are single-use. |
+| Inquiries | `GET /inquiries/mine` | User, seller, admin | List only inquiries submitted by the current authenticated user. |
 | Inquiries | `GET /inquiries` | Seller | List verified inquiries for the seller's properties. Supports `propertyId`, `followUpStatus`, and pagination filters. |
 | Inquiries | `PATCH /inquiries/:id/follow-up` | Seller | Mark an owned, verified inquiry as `contacted` or `closed`. |
 | Admin | `GET /admin/seller-applications` | Admin | Review the seller-application queue. |
@@ -147,7 +150,7 @@ curl -X POST http://localhost:5000/api/v1/inquiries \
   -d '{"propertyId":"<property-id>","name":"Taylor","email":"taylor@example.com","message":"Is this property available?"}'
 ```
 
-In development with `EMAIL_PROVIDER=console`, the response explains that email was not sent and the verification link is written to the server log. In production, SMTP delivery is required. Guest inquiries are not visible to sellers until verified; authenticated-user inquiries are verified on creation.
+In development with `EMAIL_PROVIDER=console`, the response explains that email was not sent and the frontend verification link is written to the server log. In production, SMTP delivery is required. Guest inquiries are not visible to sellers until verified; authenticated-user inquiries are verified on creation.
 
 ## Responses, errors, and validation
 

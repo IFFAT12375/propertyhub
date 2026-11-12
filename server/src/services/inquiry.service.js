@@ -80,7 +80,7 @@ export async function createInquiry({ user, fields }) {
     ),
   })
 
-  const verificationUrl = new URL('/api/v1/inquiries/verify', env.PUBLIC_API_URL)
+  const verificationUrl = new URL('/inquiries/verify', env.PUBLIC_WEB_URL)
   verificationUrl.searchParams.set('token', verificationToken)
 
   let emailSent
@@ -152,6 +152,19 @@ export async function listSellerInquiries(sellerId, { page, limit, propertyId, f
   }
   if (followUpStatus) filter.followUpStatus = followUpStatus
 
+  const [inquiries, totalItems] = await Promise.all([
+    Inquiry.find(filter)
+      .populate('property', 'title category type purpose location')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Inquiry.countDocuments(filter),
+  ])
+  return { inquiries, pagination: pagination(page, limit, totalItems) }
+}
+
+export async function listMyInquiries(userId, { page, limit }) {
+  const filter = { seeker: userId }
   const [inquiries, totalItems] = await Promise.all([
     Inquiry.find(filter)
       .populate('property', 'title category type purpose location')

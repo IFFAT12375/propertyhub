@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button.jsx'
 import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
-import { useAuth } from '../context/useAuth.js'
+import { useRegisterMutation } from '../services/api/authApi.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
 export default function Register() {
   const [values, setValues] = useState({
@@ -15,7 +16,7 @@ export default function Register() {
     confirmPassword: '',
   })
   const [error, setError] = useState('')
-  const { register } = useAuth()
+  const [register, { isLoading }] = useRegisterMutation()
   const navigate = useNavigate()
 
   function handleChange(event) {
@@ -24,10 +25,10 @@ export default function Register() {
     setError('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    if (values.password.length < 6) {
-      setError('Choose a password with at least 6 characters.')
+    if (new TextEncoder().encode(values.password).length > 72) {
+      setError('Password must be no more than 72 bytes.')
       return
     }
     if (values.password !== values.confirmPassword) {
@@ -35,12 +36,17 @@ export default function Register() {
       return
     }
 
-    const result = register(values)
-    if (!result.success) {
-      setError(result.message)
-      return
+    try {
+      await register({
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        password: values.password,
+      }).unwrap()
+      navigate('/login', { replace: true, state: { registered: true } })
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError))
     }
-    navigate('/profile', { replace: true })
   }
 
   return (
@@ -53,10 +59,6 @@ export default function Register() {
           title="Create your account"
           description="Save homes you love and stay in control of your search."
         />
-        <div className="prototype-notice">
-          This frontend demo stores registration state only in memory. It does
-          not create a real account or provide backend authentication.
-        </div>
         {error && <div className="form-alert" role="alert">{error}</div>}
         <form className="auth-form" onSubmit={handleSubmit}>
           <FormField
@@ -94,7 +96,7 @@ export default function Register() {
             autoComplete="new-password"
             value={values.password}
             onChange={handleChange}
-            minLength={6}
+            minLength={8}
             required
           />
           <FormField
@@ -104,11 +106,11 @@ export default function Register() {
             autoComplete="new-password"
             value={values.confirmPassword}
             onChange={handleChange}
-            minLength={6}
+            minLength={8}
             required
           />
-          <Button type="submit" className="auth-form__submit">
-            Create account <ArrowRight size={17} />
+          <Button type="submit" className="auth-form__submit" disabled={isLoading}>
+            {isLoading ? 'Creating account…' : 'Create account'} <ArrowRight size={17} />
           </Button>
         </form>
         <p className="auth-card__switch">

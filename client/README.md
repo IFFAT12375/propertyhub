@@ -1,16 +1,32 @@
-# React + Vite
+# PropertyHub client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React and Vite frontend for the PropertyHub API.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm install
+cp .env.example .env
+npm run dev
+```
 
-## React Compiler
+Set `VITE_API_BASE_URL` to the backend API root, including `/api/v1` (for local development, `http://localhost:5000/api/v1`). This value is bundled into the browser application; do not put secrets in `VITE_*` variables.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The backend must allow the frontend origin in `CORS_ORIGINS`. Browser API requests include credentials for the backend's HttpOnly refresh-token cookie.
 
-## Expanding the ESLint configuration
+## State and API architecture
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `src/app/store.js` configures the Redux store.
+- `src/features/auth/` holds the in-memory access token, authenticated user, and session restoration state.
+- `src/services/api/` defines RTK Query endpoints and normalization for the backend's `{ success, data }` response shape.
+- Components use RTK Query hooks for server state, cache invalidation, loading, and errors. Temporary form and filter state stays local to components.
+
+The client does not persist access or refresh tokens in browser storage. The backend sets the refresh token as an HttpOnly cookie; the client keeps the access token in Redux memory and refreshes the session when the app loads.
+
+## Commands
+
+```sh
+npm run dev
+npm run lint
+npm run build
+```

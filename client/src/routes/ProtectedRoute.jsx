@@ -1,27 +1,30 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/useAuth.js'
+import { useSelector } from 'react-redux'
 import Button from '../components/common/Button.jsx'
 
 export default function ProtectedRoute({ allowedRoles, children }) {
-  const { user } = useAuth()
+  const { user, initialized } = useSelector((state) => state.auth)
   const location = useLocation()
 
+  if (!initialized) {
+    return <div className="page-container section" role="status">Restoring your session…</div>
+  }
+
   if (!user) {
-    const redirect = encodeURIComponent(`${location.pathname}${location.search}`)
-    return <Navigate to={`/login?redirect=${redirect}`} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   if (
     (allowedRoles && !allowedRoles.includes(user.role)) ||
-    (allowedRoles?.includes('seller') && user.sellerStatus === 'suspended')
+    (allowedRoles?.includes('seller') && user.accountStatus === 'suspended')
   ) {
     return (
       <div className="access-denied page-container" role="status">
-        <span className="eyebrow">Prototype access</span>
-        <h1>This workspace isn’t available for this demo role.</h1>
+        <span className="eyebrow">Access restricted</span>
+        <h1>This workspace isn’t available for your account.</h1>
         <p>
-          Role-based routing is a frontend demonstration only and does not
-          provide real authorization.
+          Your account does not have permission to access this area. Server-side
+          authorization continues to protect all account and marketplace data.
         </p>
         <Button as="link" to="/">Return home</Button>
       </div>

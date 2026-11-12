@@ -545,6 +545,25 @@
   object-fit: cover;
 }
 
+.upload-field__preview {
+  position: relative;
+}
+
+.upload-field__preview button {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(20 30 25 / 75%);
+  color: #fff;
+  cursor: pointer;
+}
+
 .checkbox-field {
   display: flex;
   align-items: flex-start;

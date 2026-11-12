@@ -1,13 +1,3 @@
-export function getPublicProperties(properties) {
-  return properties.filter(
-    (property) =>
-      property.moderationStatus === 'approved' &&
-      property.availabilityStatus === 'available' &&
-      property.recordStatus === 'active' &&
-      property.sellerStatus === 'active',
-  )
-}
-
 export function formatPrice(price, purpose, frequency) {
   const formatted =
     price >= 10_000_000

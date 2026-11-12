@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import Button from '../common/Button.jsx'
-import { useAuth } from '../../context/useAuth.js'
+import { useLogoutMutation } from '../../services/api/authApi.js'
+import { apiErrorMessage } from '../../utils/apiErrors.js'
 
 const primaryLinks = [
   { to: '/properties?purpose=sale', label: 'Buy' },
@@ -12,7 +14,9 @@ const primaryLinks = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const user = useSelector((state) => state.auth.user)
+  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation()
+  const [logoutError, setLogoutError] = useState('')
 
   function closeMenu() {
     setMenuOpen(false)
@@ -56,7 +60,11 @@ export default function Navbar() {
               <>
                 <Button
                   as="link"
-                  to={user.role === 'admin' ? '/admin' : user.role === 'seller' ? '/seller' : '/profile'}
+                  to={user.role === 'admin'
+                    ? '/admin'
+                    : user.role === 'seller' && user.accountStatus === 'active'
+                      ? '/seller'
+                      : '/profile'}
                   variant="text"
                   onClick={closeMenu}
                 >
@@ -65,12 +73,18 @@ export default function Navbar() {
                 <Button
                   variant="outline"
                   size="small"
-                  onClick={() => {
-                    logout()
+                  disabled={isLoggingOut}
+                  onClick={async () => {
+                    setLogoutError('')
+                    try {
+                      await logout().unwrap()
+                    } catch (error) {
+                      setLogoutError(`${apiErrorMessage(error)} You have been signed out locally.`)
+                    }
                     closeMenu()
                   }}
                 >
-                  Log out
+                  {isLoggingOut ? 'Logging out…' : 'Log out'}
                 </Button>
               </>
             ) : (
@@ -85,6 +99,7 @@ export default function Navbar() {
             )}
           </div>
         </div>
+        {logoutError && <p className="form-alert" role="alert">{logoutError}</p>}
       </nav>
     </header>
   )

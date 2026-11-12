@@ -1,17 +1,13 @@
 import { useState } from 'react'
-import { ArrowRight, KeyRound, UserRound } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { ArrowRight, UserRound } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Button from '../components/common/Button.jsx'
 import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
-import { demoUsers } from '../data/mockUsers.js'
-import { useAuth } from '../context/useAuth.js'
-
-const demoLabels = {
-  user: 'Seeker',
-  seller: 'Approved seller',
-  admin: 'Administrator',
-}
+import { useLoginMutation } from '../services/api/authApi.js'
+import { setSession } from '../features/auth/authSlice.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
 function getDefaultRoute(user) {
   if (user.role === 'admin') return '/admin'
@@ -23,8 +19,11 @@ export default function Login() {
   const [values, setValues] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const dispatch = useDispatch()
+  const initialized = useSelector((state) => state.auth.initialized)
+  const [login, { isLoading }] = useLoginMutation()
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -32,26 +31,24 @@ export default function Login() {
     setError('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    const result = login(values.email, values.password)
-    if (!result.success) {
-      setError(result.message)
-      return
+    try {
+      const session = await login(values).unwrap()
+      dispatch(setSession(session))
+      const { user } = session
+      const requestedPath = searchParams.get('redirect')
+      const safePath =
+        requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
+          ? requestedPath
+          : location.state?.from?.pathname || getDefaultRoute(user)
+      navigate(safePath, { replace: true })
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError))
     }
-
-    const requestedPath = searchParams.get('redirect')
-    const safePath =
-      requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
-        ? requestedPath
-        : getDefaultRoute(result.user)
-    navigate(safePath, { replace: true })
   }
 
-  function selectDemoAccount(account) {
-    setValues({ email: account.email, password: account.password })
-    setError('')
-  }
+  const registered = location.state?.registered === true
 
   return (
     <div className="auth-page page-container">
@@ -63,10 +60,14 @@ export default function Login() {
           title="Log in to PropertyHub"
           description="Sign in to manage your saved places and property activity."
         />
-        <div className="prototype-notice">
-          Prototype login only. No account is created on a server. Use a demo
-          account below with password <strong>demo123</strong>.
-        </div>
+        {registered && (
+          <div className="success-message" role="status">
+            Your account was created. Log in to continue.
+          </div>
+        )}
+        {!initialized && (
+          <p role="status">Checking for an existing session…</p>
+        )}
         {error && <div className="form-alert" role="alert">{error}</div>}
         <form className="auth-form" onSubmit={handleSubmit}>
           <FormField
@@ -87,27 +88,10 @@ export default function Login() {
             onChange={handleChange}
             required
           />
-          <Button type="submit" className="auth-form__submit">
-            Log in <ArrowRight size={17} />
+          <Button type="submit" className="auth-form__submit" disabled={isLoading || !initialized}>
+            {isLoading ? 'Logging in…' : 'Log in'} <ArrowRight size={17} />
           </Button>
         </form>
-        <div className="demo-accounts">
-          <h2><KeyRound size={16} /> Explore a demo role</h2>
-          {demoUsers.map((account) => (
-            <button
-              className="demo-account"
-              type="button"
-              key={account.id}
-              onClick={() => selectDemoAccount(account)}
-            >
-              <span>
-                <strong>{demoLabels[account.role]}</strong>
-                <small>{account.email}</small>
-              </span>
-              <ArrowRight size={16} />
-            </button>
-          ))}
-        </div>
         <p className="auth-card__switch">
           New to PropertyHub? <Link to="/register">Create an account</Link>
         </p>

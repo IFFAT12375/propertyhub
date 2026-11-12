@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { Building2, LayoutDashboard, MessageSquare } from 'lucide-react'
 import Badge from '../components/common/Badge.jsx'
+import Button from '../components/common/Button.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import FormField from '../components/common/FormField.jsx'
 import DashboardLayout from '../components/layout/DashboardLayout.jsx'
-import { useAuth } from '../context/useAuth.js'
-import { useMarketplace } from '../context/useMarketplace.js'
+import { useGetSellerInquiriesQuery, useUpdateInquiryFollowUpMutation } from '../services/api/inquiriesApi.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
+const pageSize = 20
 const navigation = [
   { to: '/seller', label: 'Overview', icon: LayoutDashboard },
   { to: '/seller/properties', label: 'My properties', icon: Building2 },
@@ -13,27 +16,28 @@ const navigation = [
 ]
 
 export default function SellerInquiries() {
-  const { user } = useAuth()
-  const { properties, inquiries, updateInquiryFollowUp } = useMarketplace()
-  const ownedProperties = properties.filter((property) => property.ownerId === user.id)
-  const verifiedInquiries = inquiries
-    .filter(
-      (inquiry) =>
-        inquiry.verificationStatus === 'verified' &&
-        ownedProperties.some((property) => property.id === inquiry.propertyId),
-    )
-    .map((inquiry) => ({
-      ...inquiry,
-      property: ownedProperties.find((property) => property.id === inquiry.propertyId),
-    }))
-  const pendingVerificationCount = inquiries.filter(
-    (inquiry) =>
-      inquiry.verificationStatus === 'pending' &&
-      ownedProperties.some((property) => property.id === inquiry.propertyId),
-  ).length
+  const [page, setPage] = useState(1)
+  const [followUpStatus, setFollowUpStatus] = useState('')
+  const { data, isLoading, isFetching, error, refetch } = useGetSellerInquiriesQuery({
+    page,
+    limit: pageSize,
+    ...(followUpStatus ? { followUpStatus } : {}),
+  })
+  const [updateFollowUp, { isLoading: isUpdating }] = useUpdateInquiryFollowUpMutation()
+  const [requestError, setRequestError] = useState('')
+  const [message, setMessage] = useState('')
+  const inquiries = data?.inquiries || []
 
-  function handleStatusChange(inquiry, status) {
-    updateInquiryFollowUp(inquiry.id, status, user.id)
+  async function handleStatusChange(inquiry, status) {
+    if (status === 'new') return
+    setRequestError('')
+    setMessage('')
+    try {
+      await updateFollowUp({ id: inquiry.id, followUpStatus: status }).unwrap()
+      setMessage('Inquiry follow-up status updated.')
+    } catch (mutationError) {
+      setRequestError(apiErrorMessage(mutationError))
+    }
   }
 
   return (
@@ -42,25 +46,42 @@ export default function SellerInquiries() {
       description="Follow up with verified inquiries for your properties."
       navigation={navigation}
     >
-      <div className="prototype-notice dashboard-notice">
-        Only verified inquiries are shown as genuine. Guest verification is not
-        connected to email in this frontend prototype.
+      <div className="dashboard-toolbar">
+        <p>{data?.pagination?.totalItems ?? 0} verified inquiries</p>
+        <FormField
+          as="select"
+          label="Follow-up status"
+          value={followUpStatus}
+          onChange={(event) => {
+            setFollowUpStatus(event.target.value)
+            setPage(1)
+          }}
+          options={[
+            { value: '', label: 'All statuses' },
+            { value: 'new', label: 'New' },
+            { value: 'contacted', label: 'Contacted' },
+            { value: 'closed', label: 'Closed' },
+          ]}
+        />
       </div>
-      {pendingVerificationCount > 0 && (
-        <p className="seller-inquiries__pending" role="status">
-          {pendingVerificationCount} guest message
-          {pendingVerificationCount === 1 ? ' is' : 's are'} waiting for email
-          verification and will not be shown here.
-        </p>
-      )}
-      {verifiedInquiries.length ? (
-        <div className="inquiry-list">
-          {verifiedInquiries.map((inquiry) => (
+      {message && <div className="success-message" role="status">{message}</div>}
+      {requestError && <div className="form-alert" role="alert">{requestError}</div>}
+      {isLoading ? (
+        <p role="status">Loading verified inquiries…</p>
+      ) : error ? (
+        <EmptyState
+          title="Inquiries could not be loaded"
+          description={apiErrorMessage(error)}
+          action={<Button variant="outline" onClick={refetch}>Try again</Button>}
+        />
+      ) : inquiries.length ? (
+        <div className="inquiry-list" aria-busy={isFetching}>
+          {inquiries.map((inquiry) => (
             <article className="inquiry-item" key={inquiry.id}>
               <div className="inquiry-item__header">
                 <div>
                   <strong>{inquiry.name}</strong>
-                  <span>{inquiry.property.title} · {inquiry.createdAt}</span>
+                  <span>{inquiry.property?.title || 'Property listing'} · {new Date(inquiry.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="inquiry-item__badges">
                   <Badge status={inquiry.verificationStatus} />
@@ -77,9 +98,10 @@ export default function SellerInquiries() {
                   as="select"
                   label={`Follow-up status for ${inquiry.name}`}
                   value={inquiry.followUpStatus}
-                  onChange={(event) => handleStatusChange(inquiry, event.target.value)}
+                  disabled={isUpdating}
+                  onChange={(event) => void handleStatusChange(inquiry, event.target.value)}
                   options={[
-                    { value: 'new', label: 'New' },
+                    ...(inquiry.followUpStatus === 'new' ? [{ value: 'new', label: 'New' }] : []),
                     { value: 'contacted', label: 'Contacted' },
                     { value: 'closed', label: 'Closed' },
                   ]}
@@ -94,6 +116,13 @@ export default function SellerInquiries() {
           title="No verified inquiries yet"
           description="Verified messages for your properties will appear here."
         />
+      )}
+      {data?.pagination?.totalPages > 1 && (
+        <nav className="pagination" aria-label="Seller inquiry pages">
+          <Button variant="outline" disabled={page === 1 || isFetching} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+          <span>Page {page} of {data.pagination.totalPages}</span>
+          <Button variant="outline" disabled={page >= data.pagination.totalPages || isFetching} onClick={() => setPage((value) => value + 1)}>Next</Button>
+        </nav>
       )}
     </DashboardLayout>
   )

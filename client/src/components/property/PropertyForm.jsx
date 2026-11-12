@@ -1,25 +1,13 @@
-import { useState } from 'react'
-import { ImagePlus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ImagePlus, X } from 'lucide-react'
 import Button from '../common/Button.jsx'
 import FormField from '../common/FormField.jsx'
 import { lahoreAreas } from '../../data/locations.js'
 
 const residentialTypes = ['house', 'apartment', 'plot']
 const commercialTypes = ['office', 'shop', 'warehouse']
-const demoMaxImages = 10
-const demoMaxFileSize = 5 * 1024 * 1024
-
-function readImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') resolve(reader.result)
-      else reject(new Error(`Could not read ${file.name}.`))
-    }
-    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`))
-    reader.readAsDataURL(file)
-  })
-}
+const maxImages = 10
+const maxFileSize = 5 * 1024 * 1024
 
 function initialValues(property) {
   return {
@@ -32,27 +20,40 @@ function initialValues(property) {
     priceFrequency: property?.priceFrequency || 'month',
     area: property?.area?.toString() || '',
     areaUnit: property?.areaUnit || 'marla',
-    bedrooms: property?.bedrooms?.toString() || '',
-    bathrooms: property?.bathrooms?.toString() || '',
-    location: property?.location.area || '',
-    phoneVisible: property?.seller.phoneVisible ?? true,
+    bedrooms: property?.bedrooms?.toString() ?? '',
+    bathrooms: property?.bathrooms?.toString() ?? '',
+    locationArea: property?.location?.area || '',
+    phoneVisible: property?.phoneVisible ?? true,
   }
 }
 
-export default function PropertyForm({ property, onSubmit, submitLabel }) {
+function initialImages(property) {
+  return (property?.images || []).map((image) => ({
+    ...image,
+    previewUrl: image.url,
+    existing: true,
+  }))
+}
+
+export default function PropertyForm({
+  property,
+  onSubmit,
+  onDeleteImage,
+  submitLabel,
+  isSubmitting = false,
+  requestError = '',
+}) {
   const [values, setValues] = useState(() => initialValues(property))
-  const [images, setImages] = useState(() =>
-    property?.images?.length
-      ? property.images
-      : property?.image
-        ? [property.image]
-        : [],
-  )
+  const [images, setImages] = useState(() => initialImages(property))
   const [imageError, setImageError] = useState('')
   const [error, setError] = useState('')
+  const previewUrls = useRef(new Set())
   const allowedTypes =
     values.category === 'residential' ? residentialTypes : commercialTypes
-  const types = allowedTypes
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url))
+  }, [])
 
   function updateField(event) {
     const { name, value, checked, type } = event.target
@@ -67,40 +68,53 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
     }))
   }
 
-  async function handleImagesChange(event) {
+  function handleImagesChange(event) {
     const files = Array.from(event.target.files || [])
     setImageError('')
 
-    if (files.length > demoMaxImages) {
-      setImageError(`The demo accepts up to ${demoMaxImages} images at a time.`)
+    if (images.length + files.length > maxImages) {
+      setImageError(`A listing can have no more than ${maxImages} images.`)
       event.target.value = ''
       return
     }
     const invalidFile = files.find(
       (file) =>
         !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
-        file.size > demoMaxFileSize,
+        file.size > maxFileSize,
     )
     if (invalidFile) {
-      setImageError(
-        'Use JPG, PNG, or WebP images no larger than 5 MB each in this demo.',
-      )
+      setImageError('Use JPG, PNG, or WebP images no larger than 5 MB each.')
       event.target.value = ''
       return
     }
 
-    try {
-      const previews = await Promise.all(files.map(readImage))
-      setImages(previews)
-    } catch (readError) {
-      setImageError(readError.message)
-      event.target.value = ''
+    const additions = files.map((file) => {
+      const previewUrl = URL.createObjectURL(file)
+      previewUrls.current.add(previewUrl)
+      return { file, previewUrl, existing: false }
+    })
+    setImages((current) => [...current, ...additions])
+    event.target.value = ''
+  }
+
+  async function removeImage(image, index) {
+    if (images.length <= 1) {
+      setImageError('A property must retain at least one image.')
+      return
     }
+    setImageError('')
+    if (image.existing) {
+      if (!onDeleteImage || !(await onDeleteImage(image.filename))) return
+    } else {
+      URL.revokeObjectURL(image.previewUrl)
+      previewUrls.current.delete(image.previewUrl)
+    }
+    setImages((current) => current.filter((_, imageIndex) => imageIndex !== index))
   }
 
   function handleSubmit(event) {
     event.preventDefault()
-    if (!images.length) {
+    if (images.length === 0) {
       setError('Add at least one property photo to continue.')
       return
     }
@@ -109,50 +123,49 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
       return
     }
     if (
-      (values.bedrooms && Number(values.bedrooms) < 0) ||
-      (values.bathrooms && Number(values.bathrooms) < 0)
+      values.bedrooms === '' || values.bathrooms === '' ||
+      Number(values.bedrooms) < 0 || Number(values.bathrooms) < 0
     ) {
-      setError('Bedroom and bathroom counts cannot be negative.')
+      setError('Enter bedroom and bathroom counts. Use 0 when a count does not apply.')
       return
     }
 
-    setError('')
-    onSubmit({
+    const body = new FormData()
+    const fields = {
       title: values.title.trim(),
       description: values.description.trim(),
       category: values.category,
       type: values.type,
       purpose: values.purpose,
-      price: Number(values.price),
-      priceFrequency: values.purpose === 'rent' ? values.priceFrequency : null,
-      area: Number(values.area),
+      price: values.price,
+      priceFrequency: values.purpose === 'rent' ? values.priceFrequency : '',
+      area: values.area,
       areaUnit: values.areaUnit,
-      bedrooms:
-        values.category === 'residential' && values.type !== 'plot'
-          ? Number(values.bedrooms)
-          : null,
-      bathrooms: values.type !== 'plot' ? Number(values.bathrooms) : null,
-      location: { area: values.location, city: 'Lahore' },
-      image: images[0],
-      images,
-      phoneVisible: values.phoneVisible,
+      bedrooms: values.bedrooms,
+      bathrooms: values.bathrooms,
+      locationArea: values.locationArea,
+      phoneVisible: String(values.phoneVisible),
+    }
+    Object.entries(fields).forEach(([name, value]) => {
+      if (name !== 'title' || value) body.append(name, value)
     })
+    images.filter((image) => !image.existing).forEach(({ file }) => body.append('images', file))
+
+    setError('')
+    onSubmit(body)
   }
 
   return (
     <form className="property-form" onSubmit={handleSubmit}>
-      <div className="prototype-notice">
-        This is a mock listing form, not a final content specification. Photo
-        type/size/count rules and other open PRD fields are demo defaults only.
-      </div>
-      {error && <div className="form-alert" role="alert">{error}</div>}
+      {(error || requestError) && (
+        <div className="form-alert" role="alert">{error || requestError}</div>
+      )}
       <FormField
-        label="Listing title"
+        label="Listing title (optional)"
         name="title"
         value={values.title}
         onChange={updateField}
-        minLength={8}
-        required
+        maxLength={180}
       />
       <FormField
         as="textarea"
@@ -160,7 +173,8 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
         name="description"
         value={values.description}
         onChange={updateField}
-        minLength={20}
+        minLength={1}
+        maxLength={10000}
         required
       />
       <div className="property-form__grid">
@@ -180,9 +194,9 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
           as="select"
           label="Property type"
           name="type"
-          value={types.includes(values.type) ? values.type : types[0]}
+          value={values.type}
           onChange={updateField}
-          options={types.map((type) => ({
+          options={allowedTypes.map((type) => ({
             value: type,
             label: type.charAt(0).toUpperCase() + type.slice(1),
           }))}
@@ -203,8 +217,8 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
         <FormField
           as="select"
           label="Area in Lahore"
-          name="location"
-          value={values.location}
+          name="locationArea"
+          value={values.locationArea}
           onChange={updateField}
           options={[
             { value: '', label: 'Choose an area' },
@@ -224,7 +238,7 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
         {values.purpose === 'rent' && (
           <FormField
             as="select"
-            label="Rental period (demo default)"
+            label="Rental period"
             name="priceFrequency"
             value={values.priceFrequency}
             onChange={updateField}
@@ -257,36 +271,32 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
           ]}
           required
         />
-        {values.category === 'residential' && values.type !== 'plot' && (
-          <FormField
-            label="Bedrooms"
-            name="bedrooms"
-            type="number"
-            min="0"
-            value={values.bedrooms}
-            onChange={updateField}
-            required
-          />
-        )}
-        {values.type !== 'plot' && (
-          <FormField
-            label="Bathrooms"
-            name="bathrooms"
-            type="number"
-            min="0"
-            value={values.bathrooms}
-            onChange={updateField}
-            required
-          />
-        )}
+        <FormField
+          label="Bedrooms (enter 0 if not applicable)"
+          name="bedrooms"
+          type="number"
+          min="0"
+          value={values.bedrooms}
+          onChange={updateField}
+          required
+        />
+        <FormField
+          label="Bathrooms (enter 0 if not applicable)"
+          name="bathrooms"
+          type="number"
+          min="0"
+          value={values.bathrooms}
+          onChange={updateField}
+          required
+        />
       </div>
 
       <div className="form-field upload-field">
-        <label htmlFor="property-images">Property photos</label>
+        <label htmlFor="property-images">Property photos (1–10)</label>
         <label className="upload-field__drop" htmlFor="property-images">
           <ImagePlus size={22} />
           <span>Choose images from your device</span>
-          <small>JPG, PNG or WebP · preview only · up to 10 files</small>
+          <small>JPG, PNG or WebP · up to 5 MB each</small>
         </label>
         <input
           className="sr-only"
@@ -297,13 +307,20 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
           multiple
           onChange={handleImagesChange}
         />
-        {imageError && (
-          <span className="form-field__error" role="alert">{imageError}</span>
-        )}
+        {imageError && <span className="form-field__error" role="alert">{imageError}</span>}
         {images.length > 0 && (
           <div className="upload-field__previews">
             {images.map((image, index) => (
-              <img src={image} alt={`Property preview ${index + 1}`} key={`${index}-${image.slice(0, 30)}`} />
+              <div className="upload-field__preview" key={image.filename || image.previewUrl}>
+                <img src={image.previewUrl} alt={`Property image ${index + 1}`} />
+                <button
+                  type="button"
+                  aria-label={`Remove property image ${index + 1}`}
+                  onClick={() => void removeImage(image, index)}
+                >
+                  <X size={15} />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -316,12 +333,11 @@ export default function PropertyForm({ property, onSubmit, submitLabel }) {
           checked={values.phoneVisible}
           onChange={updateField}
         />
-        <span>
-          Show my phone number on this public listing. This setting can be
-          changed later.
-        </span>
+        <span>Show my phone number on this public listing. This setting can be changed later.</span>
       </label>
-      <Button type="submit">{submitLabel}</Button>
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Saving listing…' : submitLabel}
+      </Button>
     </form>
   )
 }

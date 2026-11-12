@@ -4,6 +4,7 @@ import Home from '../pages/Home.jsx'
 import Login from '../pages/Login.jsx'
 import Favorites from '../pages/Favorites.jsx'
 import MyInquiries from '../pages/MyInquiries.jsx'
+import InquiryVerification from '../pages/InquiryVerification.jsx'
 import Profile from '../pages/Profile.jsx'
 import Properties from '../pages/Properties.jsx'
 import PropertyDetails from '../pages/PropertyDetails.jsx'
@@ -39,6 +40,7 @@ export default function AppRoutes() {
       <Route path="/properties/:propertyId" element={<PropertyDetails />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/inquiries/verify" element={<InquiryVerification />} />
       <Route
         path="/profile"
         element={<ProtectedRoute><Profile /></ProtectedRoute>}

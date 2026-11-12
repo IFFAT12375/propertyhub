@@ -1,28 +1,36 @@
 import { ArrowRight, BadgeCheck, MapPin, ShieldCheck } from 'lucide-react'
+import { useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import fallbackImage from '../assets/property-placeholder.svg'
 import Button from '../components/common/Button.jsx'
+import EmptyState from '../components/common/EmptyState.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
 import SearchBar from '../components/common/SearchBar.jsx'
 import PropertyGrid from '../components/property/PropertyGrid.jsx'
-import { useAuth } from '../context/useAuth.js'
-import { useMarketplace } from '../context/useMarketplace.js'
-import { getPublicProperties } from '../utils/properties.js'
+import { useGetPropertiesQuery } from '../services/api/propertiesApi.js'
+import useFavoriteActions from '../hooks/useFavoriteActions.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
 const areas = ['Gulberg', 'DHA Phase 6', 'Johar Town', 'Lahore Cantt', 'Bahria Town']
 
 export default function Home() {
-  const { user, favoriteIds, toggleFavorite } = useAuth()
-  const { properties } = useMarketplace()
+  const user = useSelector((state) => state.auth.user)
+  const {
+    favoriteIds,
+    error: favoriteError,
+    queryError: favoriteQueryError,
+    toggleFavorite,
+  } = useFavoriteActions()
+  const { data, error, isLoading, refetch } = useGetPropertiesQuery({ page: 1, limit: 3 })
   const navigate = useNavigate()
-  const featuredProperties = getPublicProperties(properties).slice(0, 3)
+  const featuredProperties = data?.properties || []
 
   function handleFavoriteToggle(propertyId) {
     if (!user) {
       navigate('/login?redirect=%2Ffavorites')
       return
     }
-    toggleFavorite(propertyId)
+    void toggleFavorite(propertyId)
   }
 
   return (
@@ -93,11 +101,28 @@ export default function Home() {
             </Button>
           }
         />
-        <PropertyGrid
-          properties={featuredProperties}
-          favoriteIds={favoriteIds}
-          onFavoriteToggle={handleFavoriteToggle}
-        />
+        {isLoading ? (
+          <p role="status">Loading featured properties…</p>
+        ) : !error ? (
+          <PropertyGrid
+            properties={featuredProperties}
+            favoriteIds={favoriteIds}
+            onFavoriteToggle={handleFavoriteToggle}
+          />
+        ) : null}
+        {error && (
+          <EmptyState
+            title="Featured properties could not be loaded"
+            description={apiErrorMessage(error)}
+            action={<Button variant="outline" onClick={refetch}>Try again</Button>}
+          />
+        )}
+        {favoriteError && <p className="form-alert" role="alert">{favoriteError}</p>}
+        {favoriteQueryError && (
+          <p className="form-alert" role="alert">
+            Saved property status unavailable: {apiErrorMessage(favoriteQueryError)}
+          </p>
+        )}
       </section>
 
       <section className="home-seller">

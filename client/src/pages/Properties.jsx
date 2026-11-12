@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import Button from '../components/common/Button.jsx'
@@ -7,12 +8,16 @@ import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
 import PropertyGrid from '../components/property/PropertyGrid.jsx'
 import { lahoreAreas } from '../data/locations.js'
-import { useAuth } from '../context/useAuth.js'
-import { useMarketplace } from '../context/useMarketplace.js'
-import { getPublicProperties } from '../utils/properties.js'
+import { useGetPropertiesQuery } from '../services/api/propertiesApi.js'
+import useFavoriteActions from '../hooks/useFavoriteActions.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
 const pageSize = 6
 const propertyTypes = ['apartment', 'house', 'office', 'plot', 'shop', 'warehouse']
+const typesByCategory = {
+  residential: ['house', 'apartment', 'plot'],
+  commercial: ['office', 'shop', 'warehouse'],
+}
 
 function readFilters(params) {
   return {
@@ -28,35 +33,34 @@ function readFilters(params) {
 export default function Properties() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = readFilters(searchParams)
-  const { user, favoriteIds, toggleFavorite } = useAuth()
-  const { properties } = useMarketplace()
+  const user = useSelector((state) => state.auth.user)
+  const {
+    favoriteIds,
+    error: favoriteError,
+    queryError: favoriteQueryError,
+    toggleFavorite,
+  } = useFavoriteActions()
   const navigate = useNavigate()
   const currentPage = Math.max(1, Number(searchParams.get('page')) || 1)
-
-  const results = getPublicProperties(properties).filter((property) => {
-    const locationMatches =
-      !filters.location ||
-      property.location.area.toLowerCase() === filters.location.toLowerCase()
-    const purposeMatches = !filters.purpose || property.purpose === filters.purpose
-    const categoryMatches = !filters.category || property.category === filters.category
-    const typeMatches = !filters.type || property.type === filters.type
-    const minMatches =
-      !filters.minPrice || property.price >= Number(filters.minPrice)
-    const maxMatches =
-      !filters.maxPrice || property.price <= Number(filters.maxPrice)
-    return (
-      locationMatches &&
-      purposeMatches &&
-      categoryMatches &&
-      typeMatches &&
-      minMatches &&
-      maxMatches
-    )
+  const query = useMemo(() => ({
+    page: currentPage,
+    limit: pageSize,
+    area: filters.location,
+    purpose: filters.purpose,
+    category: filters.category,
+    type: filters.type,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+  }), [currentPage, filters.category, filters.location, filters.maxPrice, filters.minPrice, filters.purpose, filters.type])
+  const invalidPriceRange =
+    filters.minPrice && filters.maxPrice && Number(filters.minPrice) > Number(filters.maxPrice)
+  const { data, error, isLoading, isFetching, refetch } = useGetPropertiesQuery(query, {
+    skip: Boolean(invalidPriceRange),
   })
-
-  const totalPages = Math.max(1, Math.ceil(results.length / pageSize))
+  const results = data?.properties || []
+  const pagination = data?.pagination
+  const totalPages = Math.max(1, pagination?.totalPages || 1)
   const safePage = Math.min(currentPage, totalPages)
-  const pageResults = results.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   function applyFilters(nextFilters) {
     const params = new URLSearchParams()
@@ -83,7 +87,7 @@ export default function Properties() {
       navigate('/login?redirect=%2Ffavorites')
       return
     }
-    toggleFavorite(propertyId)
+    void toggleFavorite(propertyId)
   }
 
   return (
@@ -111,8 +115,8 @@ export default function Properties() {
         <section className="listing-results" aria-live="polite">
           <div className="listing-results__summary">
             <p>
-              <strong>{results.length}</strong>{' '}
-              {results.length === 1 ? 'property' : 'properties'} found
+              <strong>{pagination?.totalItems ?? 0}</strong>{' '}
+              {(pagination?.totalItems ?? 0) === 1 ? 'property' : 'properties'} found
             </p>
             {filters.purpose && (
               <span className="listing-results__purpose">
@@ -127,10 +131,25 @@ export default function Properties() {
               title="Check your price range"
               description="The minimum price must be lower than the maximum price."
             />
+          ) : error ? (
+            <EmptyState
+              title="Properties could not be loaded"
+              description={apiErrorMessage(error)}
+              action={<Button variant="outline" onClick={refetch}>Try again</Button>}
+            />
+          ) : isLoading ? (
+            <p className="listing-loading" role="status">Loading properties…</p>
           ) : (
             <>
+              {favoriteError && <p className="form-alert" role="alert">{favoriteError}</p>}
+              {favoriteQueryError && (
+                <p className="form-alert" role="alert">
+                  Saved property status unavailable: {apiErrorMessage(favoriteQueryError)}
+                </p>
+              )}
+              {isFetching && <p className="listing-loading" role="status">Updating results…</p>}
               <PropertyGrid
-                properties={pageResults}
+                properties={results}
                 favoriteIds={favoriteIds}
                 onFavoriteToggle={handleFavoriteToggle}
               />
@@ -139,7 +158,7 @@ export default function Properties() {
                   <Button
                     variant="outline"
                     size="small"
-                    disabled={safePage === 1}
+                    disabled={safePage === 1 || isFetching}
                     onClick={() => changePage(safePage - 1)}
                   >
                     <ChevronLeft size={16} /> Previous
@@ -148,7 +167,7 @@ export default function Properties() {
                   <Button
                     variant="outline"
                     size="small"
-                    disabled={safePage === totalPages}
+                    disabled={safePage === totalPages || isFetching}
                     onClick={() => changePage(safePage + 1)}
                   >
                     Next <ChevronRight size={16} />
@@ -165,6 +184,7 @@ export default function Properties() {
 
 function FilterForm({ initialValues, onApply }) {
   const [filters, setFilters] = useState(initialValues)
+  const availableTypes = typesByCategory[filters.category] || propertyTypes
   const invalidPriceRange =
     filters.minPrice &&
     filters.maxPrice &&
@@ -172,7 +192,13 @@ function FilterForm({ initialValues, onApply }) {
 
   function updateFilter(event) {
     const { name, value } = event.target
-    setFilters((current) => ({ ...current, [name]: value }))
+    setFilters((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === 'category' && current.type && value && !typesByCategory[value].includes(current.type)
+        ? { type: '' }
+        : {}),
+    }))
   }
 
   function handleSubmit(event) {
@@ -225,7 +251,7 @@ function FilterForm({ initialValues, onApply }) {
         onChange={updateFilter}
         options={[
           { value: '', label: 'All property types' },
-          ...propertyTypes.map((type) => ({
+          ...availableTypes.map((type) => ({
             value: type,
             label: type.charAt(0).toUpperCase() + type.slice(1),
           })),

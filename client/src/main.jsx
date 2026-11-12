@@ -4,20 +4,17 @@ import { Provider } from 'react-redux'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
-import AuthProvider from './context/AuthContext.jsx'
-import MarketplaceProvider from './context/MarketplaceProvider.jsx'
 import { store } from './app/store.js'
+import AuthBootstrap from './features/auth/AuthBootstrap.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
-        <AuthProvider>
-          <MarketplaceProvider>
-            <App />
-          </MarketplaceProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <AuthBootstrap>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthBootstrap>
     </Provider>
   </StrictMode>,
 )

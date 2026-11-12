@@ -1,9 +1,9 @@
 import { useState } from 'react'
+import { useSelector } from 'react-redux'
 import {
   ArrowLeft,
   Bath,
   BedDouble,
-  CheckCircle2,
   Heart,
   MapPin,
   Phone,
@@ -16,24 +16,28 @@ import Button from '../components/common/Button.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import FormField from '../components/common/FormField.jsx'
 import SectionHeading from '../components/common/SectionHeading.jsx'
-import { useAuth } from '../context/useAuth.js'
-import { useMarketplace } from '../context/useMarketplace.js'
-import { formatPrice, getPublicProperties } from '../utils/properties.js'
+import { useGetPropertyQuery } from '../services/api/propertiesApi.js'
+import { useCreateInquiryMutation } from '../services/api/inquiriesApi.js'
+import useFavoriteActions from '../hooks/useFavoriteActions.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
+import { formatPrice } from '../utils/properties.js'
 
 export default function PropertyDetails() {
   const { propertyId } = useParams()
-  const { properties } = useMarketplace()
-  const property = getPublicProperties(properties).find(
-    (item) => item.id === propertyId,
-  )
+  const { data: property, error, isLoading, refetch } = useGetPropertyQuery(propertyId)
 
+  if (isLoading) {
+    return <div className="page-container section" role="status">Loading property…</div>
+  }
   if (!property) {
     return (
       <div className="page-container section">
         <EmptyState
           title="This property isn’t available"
-          description="It may have been removed or is no longer available to view."
-          action={<Button as="link" to="/properties">Browse properties</Button>}
+          description={error ? apiErrorMessage(error, 'It may have been removed or is no longer available to view.') : 'It may have been removed or is no longer available to view.'}
+          action={error
+            ? <Button variant="outline" onClick={refetch}>Try again</Button>
+            : <Button as="link" to="/properties">Browse properties</Button>}
         />
       </div>
     )
@@ -43,15 +47,17 @@ export default function PropertyDetails() {
 }
 
 function PropertyDetailsContent({ property }) {
-  const { user, favoriteIds, toggleFavorite } = useAuth()
-  const { createInquiry } = useMarketplace()
+  const user = useSelector((state) => state.auth.user)
+  const {
+    favoriteIds,
+    error: favoriteError,
+    queryError: favoriteQueryError,
+    toggleFavorite,
+  } = useFavoriteActions()
+  const [createInquiry, { isLoading: isSubmittingInquiry }] = useCreateInquiryMutation()
   const navigate = useNavigate()
-  const [imageSource, setImageSource] = useState(property.image || fallbackImage)
-  const [inquiry, setInquiry] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    message: '',
-  })
+  const [imageSource, setImageSource] = useState(property.images?.[0]?.url || property.image || fallbackImage)
+  const [inquiry, setInquiry] = useState({ name: '', email: '', message: '' })
   const [submission, setSubmission] = useState(null)
   const isFavorite = favoriteIds.includes(property.id)
 
@@ -60,32 +66,28 @@ function PropertyDetailsContent({ property }) {
       navigate('/login?redirect=%2Ffavorites')
       return
     }
-    toggleFavorite(property.id)
+    void toggleFavorite(property.id)
   }
 
-  function submitInquiry(event) {
+  async function submitInquiry(event) {
     event.preventDefault()
-    const result = createInquiry({
-      propertyId: property.id,
-      seekerId: user?.id || null,
-      name: inquiry.name,
-      email: inquiry.email,
-      phone: user?.phone || '',
-      message: inquiry.message,
-    })
-    if (!result.success) {
-      setSubmission({ status: 'error', message: result.message })
-      return
+    try {
+      const result = await createInquiry({
+        propertyId: property.id,
+        ...(!user ? { name: inquiry.name, email: inquiry.email } : {}),
+        message: inquiry.message,
+      }).unwrap()
+      setSubmission({
+        status: result.data.verificationStatus,
+        message: result.message || 'Your inquiry has been sent to the property seller.',
+      })
+      setInquiry((current) => ({ ...current, message: '' }))
+    } catch (requestError) {
+      setSubmission({ status: 'error', message: apiErrorMessage(requestError) })
     }
-    setSubmission({
-      status: result.inquiry.verificationStatus,
-      message: user
-        ? 'Your demo inquiry is now visible in My inquiries. It has not been sent to a real seller.'
-        : 'Demo inquiry saved as awaiting email verification. No email was sent, and sellers cannot see it as verified.',
-    })
-    setInquiry((current) => ({ ...current, message: '' }))
   }
 
+  const title = property.title || 'Property details'
   return (
     <div className="property-details page-container">
       <Link className="back-link" to="/properties">
@@ -98,7 +100,7 @@ function PropertyDetailsContent({ property }) {
             <Badge>{property.purpose === 'rent' ? 'For rent' : 'For sale'}</Badge>
             <Badge status={property.availabilityStatus} />
           </div>
-          <h1>{property.title}</h1>
+          <h1>{title}</h1>
           <p><MapPin size={17} /> {property.location.area}, {property.location.city}</p>
         </div>
         <div className="property-details__price">
@@ -110,7 +112,7 @@ function PropertyDetailsContent({ property }) {
       <div className="property-details__gallery">
         <img
           src={imageSource}
-          alt={property.title}
+          alt={title}
           onError={() => setImageSource(fallbackImage)}
         />
         <div className="property-details__gallery-overlay">
@@ -121,8 +123,8 @@ function PropertyDetailsContent({ property }) {
             onClick={handleFavorite}
             aria-label={
               isFavorite
-                ? `Remove ${property.title} from favorites`
-                : `Add ${property.title} to favorites`
+                ? `Remove ${title} from favorites`
+                : `Add ${title} to favorites`
             }
             aria-pressed={isFavorite}
           >
@@ -160,23 +162,27 @@ function PropertyDetailsContent({ property }) {
               title="Ask about this property"
               description="Send a message to express interest or ask a question."
             />
-            <div className="inquiry-demo-note">
-              <CheckCircle2 size={17} />
-              <span>
-                Prototype only: messages are not delivered. Guest inquiries are
-                represented as unverified until email verification exists.
-              </span>
-            </div>
+            {favoriteError && <p className="form-alert" role="alert">{favoriteError}</p>}
+            {favoriteQueryError && (
+              <p className="form-alert" role="alert">
+                Saved property status unavailable: {apiErrorMessage(favoriteQueryError)}
+              </p>
+            )}
+            {user && (
+              <p className="account-panel__note">
+                Sending as {user.name} ({user.email}).
+              </p>
+            )}
             {submission && (
               <div
                 className={`inquiry-feedback inquiry-feedback--${submission.status}`}
-                role="status"
+                role={submission.status === 'error' ? 'alert' : 'status'}
               >
                 {submission.message}
               </div>
             )}
             <form className="inquiry-form" id="inquiry-form" onSubmit={submitInquiry}>
-              <div className="inquiry-form__row">
+              {!user && <div className="inquiry-form__row">
                 <FormField
                   label="Your name"
                   name="name"
@@ -198,7 +204,7 @@ function PropertyDetailsContent({ property }) {
                   }
                   required
                 />
-              </div>
+              </div>}
               <FormField
                 as="textarea"
                 label="Message"
@@ -208,22 +214,24 @@ function PropertyDetailsContent({ property }) {
                   setInquiry((current) => ({ ...current, message: event.target.value }))
                 }
                 placeholder="I’d like to know more about this property..."
-                minLength={10}
+                minLength={1}
                 required
               />
-              <Button type="submit">Send demo inquiry</Button>
+              <Button type="submit" disabled={isSubmittingInquiry}>
+                {isSubmittingInquiry ? 'Sending…' : 'Send inquiry'}
+              </Button>
             </form>
           </section>
         </div>
 
         <aside className="seller-card">
           <div className="seller-card__avatar" aria-hidden="true">
-            {property.seller.name.charAt(0)}
+            {property.seller?.name?.charAt(0) || 'S'}
           </div>
           <span className="eyebrow">Listed by</span>
-          <h2>{property.seller.name}</h2>
+          <h2>{property.seller?.name || 'PropertyHub seller'}</h2>
           <p>PropertyHub seller</p>
-          {property.seller.phoneVisible ? (
+          {property.phoneVisible && property.seller?.phone ? (
             <a className="seller-card__phone" href={`tel:${property.seller.phone}`}>
               <Phone size={17} /> {property.seller.phone}
             </a>

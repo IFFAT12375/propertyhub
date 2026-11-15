@@ -1,5 +1,6 @@
 import { connectDatabase, disconnectDatabase } from '../config/database.js'
 import { logger } from '../config/logger.js'
+import { env } from '../config/env.js'
 import User from '../models/User.js'
 import { registerBodySchema } from '../validators/auth.validators.js'
 
@@ -18,6 +19,9 @@ if (!details.success) {
   process.exitCode = 1
 } else if (process.env.NODE_ENV === 'test') {
   console.error('Admin bootstrap is not available in test mode.')
+  process.exitCode = 1
+} else if (env.NODE_ENV === 'production') {
+  console.error('Admin bootstrap is not available in production mode.')
   process.exitCode = 1
 } else {
   try {

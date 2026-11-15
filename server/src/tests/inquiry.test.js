@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { describe, it } from 'node:test'
 import mongoose from 'mongoose'
 import Inquiry from '../models/Inquiry.js'
@@ -104,5 +105,39 @@ describe('inquiry request validation', () => {
     } finally {
       logger.info = originalInfo
     }
+  })
+
+  it('requires STARTTLS for SMTP when implicit TLS is disabled', () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        [
+          "import nodemailer from 'nodemailer'",
+          'let transportOptions',
+          'nodemailer.createTransport = (options) => { transportOptions = options; return {} }',
+          "await import('./src/services/email.service.js')",
+          'if (!transportOptions?.requireTLS || transportOptions.secure) process.exitCode = 1',
+        ].join(';'),
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'test-production-secret-that-is-long-enough',
+          EMAIL_PROVIDER: 'smtp',
+          SMTP_HOST: 'smtp.example.test',
+          SMTP_PORT: '587',
+          SMTP_SECURE: 'false',
+          SMTP_USER: 'smtp-user',
+          SMTP_PASSWORD: 'smtp-password',
+        },
+      },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
   })
 })

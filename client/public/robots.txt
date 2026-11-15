@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /favorites
+Disallow: /inquiries/
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://propertyhub-blush.vercel.app/sitemap.xml

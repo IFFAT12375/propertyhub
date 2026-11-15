@@ -23,6 +23,8 @@ Vercel runs the exported Express app in `src/app.js`. Database-backed routes est
 
 The client project includes a Vercel rewrite for React Router deep links. This makes routes load directly but does not provide server-rendered SEO metadata.
 
+The current `robots.txt` and `sitemap.xml` use the `propertyhub-blush.vercel.app` origin and include only the homepage and property search route. Update them to the canonical custom domain and generate public listing URLs before relying on them for full indexing.
+
 Configure these variables in the API project's Vercel settings:
 
 | Variable | Production value |

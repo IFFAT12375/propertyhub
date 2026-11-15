@@ -196,7 +196,16 @@ describe('backend foundation', () => {
 
     assert.equal(response.status, 200)
     assert.equal(response.headers['x-content-type-options'], 'nosniff')
+    assert.equal(response.headers['cross-origin-resource-policy'], 'same-origin')
     assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173')
+  })
+
+  it('allows cross-origin embedding for public images only', async () => {
+    const imageResponse = await request(app).get('/uploads/missing-test-image.png')
+    const apiResponse = await request(app).get('/api/v1/health')
+
+    assert.equal(imageResponse.headers['cross-origin-resource-policy'], 'cross-origin')
+    assert.equal(apiResponse.headers['cross-origin-resource-policy'], 'same-origin')
   })
 
   it('rejects origins outside the configured allowlist', async () => {

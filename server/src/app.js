@@ -7,6 +7,7 @@ import mongoose from 'mongoose'
 import { connectDatabase } from './config/database.js'
 import { env } from './config/env.js'
 import AppError from './utils/AppError.js'
+import { logger } from './config/logger.js'
 import errorHandler from './middlewares/errorHandler.js'
 import notFound from './middlewares/notFound.js'
 import requestId from './middlewares/requestId.js'
@@ -61,7 +62,7 @@ function healthCheck(req, res) {
   })
 }
 
-function readinessCheck(req, res) {
+function sendReadiness(req, res) {
   const databaseReady = mongoose.connection.readyState === 1
   res.status(databaseReady ? 200 : 503).json({
     success: databaseReady,
@@ -71,6 +72,30 @@ function readinessCheck(req, res) {
     },
     requestId: req.id,
   })
+}
+
+function readinessCheck(req, res) {
+  if (env.NODE_ENV === 'test') {
+    sendReadiness(req, res)
+    return
+  }
+
+  connectDatabase().then(
+    () => sendReadiness(req, res),
+    (error) => {
+      logger.error({
+        message: 'Database readiness check failed',
+        requestId: req.id,
+        errorName: error.name,
+        errorCode: error.code,
+      })
+      res.status(503).json({
+        success: false,
+        data: { status: 'not_ready', database: 'unavailable' },
+        requestId: req.id,
+      })
+    },
+  )
 }
 
 function ensureDatabaseConnection(_req, _res, next) {
@@ -87,16 +112,23 @@ function ensureDatabaseConnection(_req, _res, next) {
 
 app.get('/api/health', healthCheck)
 app.get('/api/v1/health', healthCheck)
-app.get('/api/v1/health/ready', ensureDatabaseConnection, readinessCheck)
+app.get('/api/v1/health/ready', readinessCheck)
 app.use('/api/v1', apiRateLimit)
 app.use(cookieParser())
 app.use(express.json({ limit: env.JSON_BODY_LIMIT }))
 app.use('/api/v1', ensureDatabaseConnection, apiRoutes)
-app.use('/uploads', express.static(uploadDirectory, {
-  dotfiles: 'deny',
-  index: false,
-  maxAge: '1d',
-}))
+app.use(
+  '/uploads',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+    next()
+  },
+  express.static(uploadDirectory, {
+    dotfiles: 'deny',
+    index: false,
+    maxAge: '1d',
+  }),
+)
 
 app.use(notFound)
 app.use(errorHandler)

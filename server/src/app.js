@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser'
 import { rateLimit } from 'express-rate-limit'
 import helmet from 'helmet'
 import mongoose from 'mongoose'
+import { connectDatabase } from './config/database.js'
 import { env } from './config/env.js'
 import AppError from './utils/AppError.js'
 import errorHandler from './middlewares/errorHandler.js'
@@ -72,13 +73,25 @@ function readinessCheck(req, res) {
   })
 }
 
+function ensureDatabaseConnection(_req, _res, next) {
+  if (env.NODE_ENV === 'test') {
+    next()
+    return
+  }
+
+  connectDatabase().then(
+    () => next(),
+    (error) => next(error),
+  )
+}
+
 app.get('/api/health', healthCheck)
 app.get('/api/v1/health', healthCheck)
-app.get('/api/v1/health/ready', readinessCheck)
+app.get('/api/v1/health/ready', ensureDatabaseConnection, readinessCheck)
 app.use('/api/v1', apiRateLimit)
 app.use(cookieParser())
 app.use(express.json({ limit: env.JSON_BODY_LIMIT }))
-app.use('/api/v1', apiRoutes)
+app.use('/api/v1', ensureDatabaseConnection, apiRoutes)
 app.use('/uploads', express.static(uploadDirectory, {
   dotfiles: 'deny',
   index: false,

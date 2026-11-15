@@ -4,6 +4,7 @@ import { after, describe, it } from 'node:test'
 import mongoose from 'mongoose'
 import request from 'supertest'
 import app from '../app.js'
+import { connectDatabase } from '../config/database.js'
 
 after(async () => {
   if (mongoose.connection.readyState !== 0) {
@@ -43,6 +44,31 @@ describe('backend foundation', () => {
 
     assert.equal(result.status, 1)
     assert.match(result.stderr, /Invalid server environment configuration: MONGO_URI/)
+  })
+
+  it('shares an in-flight MongoDB connection attempt', async () => {
+    const originalConnect = mongoose.connect
+    let resolveConnection
+    let connectionAttempts = 0
+    mongoose.connect = () => {
+      connectionAttempts += 1
+      return new Promise((resolve) => {
+        resolveConnection = resolve
+      })
+    }
+
+    try {
+      const firstConnection = connectDatabase()
+      const secondConnection = connectDatabase()
+      assert.equal(connectionAttempts, 1)
+
+      resolveConnection(mongoose)
+      const connections = await Promise.all([firstConnection, secondConnection])
+      assert.equal(connections[0], mongoose.connection)
+      assert.equal(connections[1], mongoose.connection)
+    } finally {
+      mongoose.connect = originalConnect
+    }
   })
 
   it('rejects the development JWT signing secret in production', () => {

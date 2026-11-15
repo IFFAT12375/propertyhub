@@ -1,11 +1,25 @@
 import mongoose from 'mongoose'
 import { env } from './env.js'
 
-export async function connectDatabase() {
-  await mongoose.connect(env.MONGO_URI, {
+let connectionPromise
+
+export function connectDatabase() {
+  if (mongoose.connection.readyState === 1) {
+    return Promise.resolve(mongoose.connection)
+  }
+  if (connectionPromise) {
+    return connectionPromise
+  }
+
+  connectionPromise = mongoose.connect(env.MONGO_URI, {
     serverSelectionTimeoutMS: 5000,
   })
-  return mongoose.connection
+    .then(() => mongoose.connection)
+    .finally(() => {
+      connectionPromise = null
+    })
+
+  return connectionPromise
 }
 
 export async function disconnectDatabase() {

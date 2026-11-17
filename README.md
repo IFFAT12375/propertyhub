@@ -2,6 +2,11 @@
 
 PropertyHub is a Lahore property marketplace built with React, Express, and MongoDB.
 
+## Live deployment
+
+- Frontend: [PropertyHub live site](https://propertyhub-blush.vercel.app/)
+- Backend API: [health check](https://propertyhub-api-zeta.vercel.app/api/v1/health) (`https://propertyhub-api-zeta.vercel.app/api/v1`)
+
 ## Run locally
 
 1. Install and start MongoDB.

@@ -284,7 +284,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository workflow details.
 
 ## 12. License
 
-TODO: Choose a repository license. The [server manifest](./server/package.json) declares `ISC`, but there is no root `LICENSE` file and the declaration must be confirmed before representing it as the project-wide license.
+PropertyHub is licensed under the [MIT License](./LICENSE).
 
 ## 13. Author & Acknowledgements
 

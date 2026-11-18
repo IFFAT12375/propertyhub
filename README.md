@@ -11,8 +11,7 @@ PropertyHub is a Lahore-focused real estate marketplace for discovering, listing
 **Quick links:** [Live Demo](https://propertyhub-blush.vercel.app/) | [Documentation](./docs/DEPLOYMENT.md) | [Report Bug](https://github.com/IFFAT12375/propertyhub/issues/new) | [Request Feature](https://github.com/IFFAT12375/propertyhub/issues/new)
 
 ## 2. Screenshots / Demo
-
-<!-- TODO: add screenshot at docs/screenshot.png -->
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-propertyhub-blush.vercel.app-174A3A)](https://propertyhub-blush.vercel.app/)
 
 ## 3. The Problem and the Solution
 
